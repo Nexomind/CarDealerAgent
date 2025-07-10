@@ -1,0 +1,680 @@
+{
+  "name": "CarSalesmanAIagent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        20
+      ],
+      "id": "d6b39770-cdf6-4e44-a1c1-acfd14b8a2fd",
+      "name": "WhatsApp Trigger",
+      "webhookId": "febd887a-a085-4cfe-9beb-bc46795725c9",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "MFkv9jmzBhQN7Ser",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type == 'audio' && Boolean($json.audio) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "2ae88c48-e5f7-413f-bb0f-4a147944482d"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Audio"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Texto"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        120,
+        20
+      ],
+      "id": "84a55784-8fc4-43a4-bc72-662cb79807f2",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "messages",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        20
+      ],
+      "id": "3df7ccbc-f06f-4fe7-8916-a37299f0ab33",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        40
+      ],
+      "id": "299f168b-0122-4449-80d2-d3db5792255e",
+      "name": "Wait",
+      "webhookId": "1c3297aa-3acf-4fff-ac34-6898e586c104"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.audio.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -140
+      ],
+      "id": "88af9951-9353-49ef-876c-aab761df576a",
+      "name": "WhatsApp Business Cloud",
+      "webhookId": "2b6f19df-29d4-429f-9d6b-33ed5d86e7cb",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "47qg4hYnqwLGcQUz",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        500,
+        -140
+      ],
+      "id": "f94fe616-616d-4de9-a8e1-a037dc5caa96",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "SjtbOcP1J0cFxJKx",
+          "name": "OpenAiaccount3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "654f9a7e-da0d-4ec8-9faf-c621dbeed51c",
+              "name": "=Type",
+              "value": "={{ $('Split Out').item.json.type }}",
+              "type": "string"
+            },
+            {
+              "id": "a5104dad-0722-4fba-88b6-e50b50f06612",
+              "name": "Text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        680,
+        40
+      ],
+      "id": "027b225a-9af7-49b4-a3d0-a42fb85b1e3b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=El usuario envió el siguiente mensaje:\ntipo de mensaje : {{ $json.Type }} y petición: {{ $json.Text }}",
+        "options": {
+          "systemMessage": "=Eres un asistente personal eficiente e inteligente para un vendedor en un concesionario de vehículos. Estás encargado de gestionar eventos de calendario, correos electrónicos, mensajes informativos y tareas de comunicación de forma fluida. Siempre usas un tono cercano, natural y nada robótico.\n\n=== Gestión de Calendario ===\n\n- Para recuperar eventos, usa la herramienta \"EventoCalendario\".\n  - Si hay eventos programados, responde de forma clara:\n    Ejemplo: \"Tienes una reunión con el equipo a las 10:00 AM en la oficina. También tienes una presentación al cliente a las 3:00 PM por Zoom. ¿Necesitas más detalles?\"\n  - Si no hay eventos, di: \"Parece que hoy tienes el día libre. Si necesitas agendar algo, dime y lo hago en un momento.\"\n\n- Para crear eventos, usa la herramienta \"CreaEvento\".\n  - Si la información está completa, confírmalo directamente:\n    Ejemplo: \"Listo, he programado la reunión con Mateo el miércoles a las 4 PM. Ya está en tu calendario.\"\n  - Solo pide detalles si falta información clave o si hay un error técnico. Nunca confirmes si el evento no se creó correctamente.\n\n=== Gestión de Correos ===\n\n- Para obtener correos, usa \"RecibeCorreo\".\n  - Si hay nuevos correos, resume de forma útil:\n    Ejemplo: \"Aquí tienes los correos de hoy. Sarah Thompson: 'Propuesta de colaboración' – Quiere discutir un proyecto la próxima semana. Emily White: 'Confirmación de reunión' – La reunión de mañana está confirmada, pero pide detalles de la agenda.\"\n  - Si no hay correos nuevos, di: \"No encontré nuevos correos en ese período. Si crees que falta algo, dime y reviso de nuevo.\"\n\n- Para enviar correos, usa \"CreaCorreo\".\n  - Mantén un tono conversacional y amable:\n    Ejemplo: \"Genial, ya le envié un correo a John para coordinar la reunión. Te aviso si responde.\"\n  - Si falta información clave, pregunta solo lo necesario:\n    Ejemplo: \"¿Quieres que le proponga una fecha específica o que él elija?\"\n  - Para enviar correos con archivo adjunto deberas obtenerlo de la herramienta \"DriveBuscar\".\n\n- Usa la herramienta \"ConseguirCliente\" para obtener correos electrónicos.\n  - Si no encuentras el contacto, di: \"No encontré el email de Sarah en la lista. ¿Quieres que lo busque en tus contactos o lo agregamos?\"\n  - Si hay varias coincidencias, aclara: \"Tengo dos personas llamadas 'Carlos' en tus contactos: Carlos Pérez y Carlos Ramírez. ¿A cuál te refieres?\"\n\n- Para guardar contactos, usa este formato:\n  {nombre: \"nombre\", mail: \"mail\", telefono: \"telefono\"}\n\n=== Archivos y Datos ===\n\n- Para buscar y descargar un archivo PDF, usa la herramienta \"DriveBuscar\".\n\n=== Vehículos y Precios ===\n\n- Usa la herramienta “Precio” para obtener precios de vehículos cuando el usuario lo solicite.\n\nLos modelos con los que trabajaremos son los siguientes\n\nMarca: Kia\n\nModelos: Picanto, Soluto, Sportage, Sonet, Seltos, Carens.\n\n=== Contexto Temporal ===\n\n- La hora actual es {{ $now.format('dd-MM-yyyy') }}. Usa expresiones naturales como “ahora”, “después”, “más tarde” o “mañana” según corresponda.\n- No confirmes acciones si no se ejecutaron correctamente.\n- Evita tecnicismos y errores innecesarios. Solo menciona un problema técnico si realmente ocurrió.\n\nTu objetivo es ahorrar tiempo al usuario, manteniendo claridad y calidez en cada respuesta.\nul assistant\n\nUn Saludos\nAlbert Rodriguez\n\n",
+          "maxIterations": 3,
+          "returnIntermediateSteps": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -220,
+        260
+      ],
+      "id": "c976ccac-dc80-4421-ae3c-0f437e41750c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -420,
+        520
+      ],
+      "id": "aceeb68b-3d77-449a-bbc3-668c3a3c2222",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "SjtbOcP1J0cFxJKx",
+          "name": "OpenAiaccount3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "1"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        520
+      ],
+      "id": "d38bfb54-919c-453e-9b41-615cf452e4b1",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Usar cuando el usuario quiera obtener uno o varios eventos. Consultar según la indicación del usuario.",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "7748ca99000e9792778d1f3484f32be96caabdf3b8bae5054a9b1d424deed89f@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "n8nTest"
+        },
+        "timeMin": "={{ $now.plus(1, \"hour\") }}",
+        "timeMax": "={{ $now.minus(1, \"hour\") }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -220,
+        520
+      ],
+      "id": "399cef58-1943-4bea-865c-20d228f57568",
+      "name": "EventoCalendario",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "mBBGNAOmiC8jwY1H",
+          "name": "ServicioAlClienteClinicaAlpha0"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Usala cuando el usuario solicite crear o generar un evento a la hora indicada",
+        "calendar": {
+          "__rl": true,
+          "value": "7748ca99000e9792778d1f3484f32be96caabdf3b8bae5054a9b1d424deed89f@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "n8nTest"
+        },
+        "additionalFields": {
+          "attendees": [],
+          "description": "={{ $fromAI('description', 'Detalles o agenda del evento', 'string') }}",
+          "summary": "={{ $fromAI('title', 'Especifica el título del evento', 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -120,
+        520
+      ],
+      "id": "ff60af94-d535-4220-aa74-c3b02e6bf354",
+      "name": "CreaEvento",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "mBBGNAOmiC8jwY1H",
+          "name": "ServicioAlClienteClinicaAlpha0"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        140,
+        520
+      ],
+      "id": "fd85288f-5087-45e0-884a-1c38aa681316",
+      "name": "RecibeCorreo",
+      "webhookId": "57d33c1c-c01b-42f0-bc82-7d68666cfcdf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jZ0TPrXFSFbmMMzU",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "emailType": "text",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        260,
+        520
+      ],
+      "id": "ce512d8c-4eda-467a-9c6d-df0d6babee20",
+      "name": "CreaCorreo",
+      "webhookId": "46fbf96d-e1f7-477b-8bee-760f5b6f4a11",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jZ0TPrXFSFbmMMzU",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1-ejWkX5VFjHIorFPAtKdoPPu3io0cqxfokXzBpKp9pk",
+          "mode": "list",
+          "cachedResultName": "ConseguirCliente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-ejWkX5VFjHIorFPAtKdoPPu3io0cqxfokXzBpKp9pk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-ejWkX5VFjHIorFPAtKdoPPu3io0cqxfokXzBpKp9pk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        380,
+        520
+      ],
+      "id": "06f46bc4-6d03-47ea-aba0-b59a9c54da91",
+      "name": "ConseguirCliente",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "NwbK2HItS1ufBY31",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1od51sv5C1dWI4ijpR76CU-DoVPXFIER6sBASLE6adus",
+          "mode": "list",
+          "cachedResultName": "Precio",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1od51sv5C1dWI4ijpR76CU-DoVPXFIER6sBASLE6adus/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1od51sv5C1dWI4ijpR76CU-DoVPXFIER6sBASLE6adus/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        500,
+        520
+      ],
+      "id": "352a4c98-f207-46cc-afc5-a3ee360e29b6",
+      "name": "Precio",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "NwbK2HItS1ufBY31",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to search and download a specific pdf file",
+        "workflowId": {
+          "__rl": true,
+          "value": "QYLWGpL2NoghkceJ",
+          "mode": "list",
+          "cachedResultName": "Practicas01 — DriveBuscar"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        20,
+        520
+      ],
+      "id": "3dc396ac-67b6-4678-8ce6-7e496e9747fd",
+      "name": "DriveBuscar"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "550768671461979",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        680,
+        260
+      ],
+      "id": "d00dad5f-a605-442f-9b1c-f85440f3445d",
+      "name": "WhatsApp Business Cloud1",
+      "webhookId": "0bde5a2e-e2ef-4478-aa4e-c56193f26611",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "47qg4hYnqwLGcQUz",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# CAR SALESMAN AI AGENT\n",
+        "height": 80,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -140
+      ],
+      "id": "759bb484-b638-4b34-ae06-cf9959d6295e",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp Business Cloud",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Business Cloud": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EventoCalendario": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreaEvento": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RecibeCorreo": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreaCorreo": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConseguirCliente": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Precio": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DriveBuscar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp Business Cloud1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f831a6a9-f3eb-44d7-b534-7988f2423c60",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "da3fc428bd3eaeb6f65c4ef9588195ebde010195ca06f268fe49b5cb89d4894a"
+  },
+  "id": "p5JwH1XiM6DQgtyR",
+  "tags": []
+}
